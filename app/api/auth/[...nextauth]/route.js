@@ -1,10 +1,9 @@
+//the route that will handle the entire authentication process
+
 import NextAuth from 'next-auth/next'
 import GoogleProvider from 'next-auth/providers/google'
-
-console.log({
-  clientId: process.env.GOOGLE_ID,
-  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-})
+import { connectToDB } from '@utils/database'
+import User from '@models/user'
 
 const handler = NextAuth({
   providers: [
@@ -13,8 +12,41 @@ const handler = NextAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     }),
   ],
-  async session({ session }) {},
-  async signIn({ profile }) {},
+
+  //get the data about that user every time to keep an existing running session
+  async session({ session }) {
+    const sessionUser = await User.findOne({
+      email: session.user.email,
+    })
+    //update its id
+    session.user.id = sessionUser._id.toString()
+    return session
+  },
+
+  //sign in function linked with mongoDB utils (USER model)
+  async signIn({ profile }) {
+    try {
+      //serverless -> lambda -> dynamic db access
+      await connectToDB()
+
+      //check if the user already exists
+      const userExists = await User.findOne({
+        email: profile.email,
+      })
+      //if not, create a new user
+      if (!userExists) {
+        await User.create({
+          email: profile.email,
+          username: profile.name.replace(' ', '').toLowerCase(),
+          image: profile.picture,
+        })
+      }
+      return true
+    } catch (error) {
+      console.log(error)
+      return false
+    }
+  },
 })
 
 export { handler as GET, handler as POST }
