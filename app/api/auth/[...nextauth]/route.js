@@ -13,10 +13,11 @@ const handler = NextAuth({
     }),
   ],
 
-  //get the data about that user every time to keep an existing running session
+  callbacks: {
+    //get the data about that user every time to keep an existing running session
   async session({ session }) {
     const sessionUser = await User.findOne({
-      email: session.user.email,
+      email: session.user.email
     })
     //update its id
     session.user.id = sessionUser._id.toString()
@@ -31,14 +32,14 @@ const handler = NextAuth({
 
       //check if the user already exists
       const userExists = await User.findOne({
-        email: profile.email,
+        email: profile.email
       })
       //if not, create a new user
-      if (!userExists) {
+      if(!userExists) {
         await User.create({
           email: profile.email,
           username: profile.name.replace(' ', '').toLowerCase(),
-          image: profile.picture,
+          image: profile.picture
         })
       }
       return true
@@ -47,6 +48,9 @@ const handler = NextAuth({
       return false
     }
   },
+  }
+
+  
 })
 
 export { handler as GET, handler as POST }
